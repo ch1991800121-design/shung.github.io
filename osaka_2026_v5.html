@@ -1,0 +1,735 @@
+﻿<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2026 盛夏。大阪行 - v5.0 完整攻略</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Noto Sans TC', sans-serif; background-color: #f8fafc; -webkit-tap-highlight-color: transparent; }
+        
+        /* Custom Scrollbar */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* Drag & Drop Styles */
+        .sortable-ghost { opacity: 0.4; background-color: #e0f2fe; }
+        .sortable-drag { cursor: grabbing; transform: scale(1.02); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); }
+
+        /* Airport Board Style */
+        .flight-board {
+            background-color: #1e293b;
+            font-family: 'Share Tech Mono', monospace;
+            color: #fbbf24;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+        }
+        .flight-row { border-bottom: 1px solid #334155; }
+        .flight-row:last-child { border-bottom: none; }
+
+        /* Checkbox Style */
+        .checkbox-wrapper input:checked + div {
+            background-color: #0ea5e9;
+            border-color: #0ea5e9;
+        }
+        .checkbox-wrapper input:checked + div svg {
+            display: block;
+        }
+        .checkbox-wrapper input:checked ~ span {
+            text-decoration: line-through;
+            color: #94a3b8;
+        }
+
+        /* Sticky Header for Itinerary */
+        .sticky-header {
+            position: sticky;
+            top: 0;
+            z-index: 30;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(8px);
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        /* Card Hover */
+        .hover-card { transition: all 0.3s ease; }
+        .hover-card:hover { transform: translateY(-3px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
+
+        /* FAB */
+        .fab {
+            position: fixed; bottom: 2rem; right: 2rem; z-index: 40;
+            transition: transform 0.2s;
+        }
+        .fab:active { transform: scale(0.95); }
+        
+        /* Day Selector Active State */
+        .day-btn.active {
+            background-color: #0ea5e9;
+            color: white;
+            border-color: #0ea5e9;
+        }
+        .day-btn.active .sub-text { color: #e0f2fe; }
+    </style>
+</head>
+<body class="text-slate-700 h-screen flex flex-col overflow-hidden">
+
+    <nav class="bg-white shadow-sm z-50 shrink-0">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="flex justify-between items-center h-16 overflow-x-auto no-scrollbar">
+                <div class="font-bold text-xl text-sky-600 flex items-center gap-2 mr-4 shrink-0">
+                    🇯🇵 大阪盛夏 2026
+                </div>
+                <div class="flex space-x-1 shrink-0">
+                    <button onclick="switchTab('overview')" class="nav-btn active px-4 py-2 rounded-full text-sm font-bold transition bg-sky-600 text-white" id="btn-overview">行前準備</button>
+                    <button onclick="switchTab('itinerary')" class="nav-btn px-4 py-2 rounded-full text-sm font-bold transition text-slate-500 hover:bg-slate-100" id="btn-itinerary">每日細流</button>
+                    <button onclick="switchTab('spots')" class="nav-btn px-4 py-2 rounded-full text-sm font-bold transition text-slate-500 hover:bg-slate-100" id="btn-spots">美食購物</button>
+                    <button onclick="switchTab('info')" class="nav-btn px-4 py-2 rounded-full text-sm font-bold transition text-slate-500 hover:bg-slate-100" id="btn-info">交通住宿</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="flex-1 overflow-hidden relative bg-slate-50">
+
+        <div id="overview-view" class="view-section h-full overflow-y-auto pb-20">
+            <div class="max-w-5xl mx-auto px-4 py-8 space-y-8">
+                
+                <section class="bg-white rounded-2xl p-6 shadow-sm">
+                    <h2 class="text-2xl font-bold text-slate-800 mb-4 border-l-4 border-sky-500 pl-3">🗺️ 行程重點氛圍</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div class="p-4 bg-orange-50 rounded-xl border border-orange-100">
+                            <div class="text-3xl mb-2">🐙 大阪市區</div>
+                            <p class="text-sm text-slate-600">熱情奔放的美食之都。新世界懷舊串炸、難波心齋橋的時尚爆買，感受城市活力。</p>
+                        </div>
+                        <div class="p-4 bg-green-50 rounded-xl border border-green-100">
+                            <div class="text-3xl mb-2">🍵 京都宇治</div>
+                            <p class="text-sm text-slate-600">抹茶故鄉與古蹟。平等院的莊嚴、宇治川的寧靜，享受道地抹茶甜點。</p>
+                        </div>
+                        <div class="p-4 bg-emerald-50 rounded-xl border border-emerald-100">
+                            <div class="text-3xl mb-2">🎍 京都嵐山</div>
+                            <p class="text-sm text-slate-600">山水交織的自然絕景。竹林小徑的清幽、渡月橋的流水，體驗平安貴族風情。</p>
+                        </div>
+                        <div class="p-4 bg-amber-50 rounded-xl border border-amber-100">
+                            <div class="text-3xl mb-2">🦌 奈良古都</div>
+                            <p class="text-sm text-slate-600">人與鹿共存的千年古都。東大寺大佛的震撼與小鹿的互動，交織出獨特韻味。</p>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="bg-white rounded-2xl p-6 shadow-sm">
+                    <h2 class="text-2xl font-bold text-slate-800 mb-6 border-l-4 border-emerald-500 pl-3">🧳 行前準備檢核表</h2>
+                    <p class="text-sm text-slate-400 mb-4 -mt-4">點擊方塊即可標記完成</p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6" id="checklist-container">
+                        </div>
+                </section>
+
+                <section class="bg-amber-50 border border-amber-200 rounded-2xl p-6 shadow-sm">
+                    <h2 class="text-xl font-bold text-amber-800 mb-4 flex items-center gap-2">
+                        💡 旅日重要提醒
+                    </h2>
+                    <ul class="space-y-3 text-amber-900 text-sm">
+                        <li class="flex gap-3 items-start">
+                            <span class="font-bold text-lg leading-none">💰</span>
+                            <div>
+                                <strong class="block">寺廟參拜零錢 (賽錢)</strong>
+                                建議多準備 <strong>5円 (結緣)</strong> 硬幣。避免使用 10円 (諧音"遠緣")。許多御守、抽籤只收現金，請準備零錢包。
+                            </div>
+                        </li>
+                        <li class="flex gap-3 items-start">
+                            <span class="font-bold text-lg leading-none">📱</span>
+                            <div>
+                                <strong class="block">必備 APP 下載</strong>
+                                1. <strong>Visit Japan Web</strong>: 入境必備，截圖QR Code。<br>
+                                2. <strong>乘換案內 / Google Maps</strong>: 交通查詢。<br>
+                                3. <strong>Suica / ICOCA</strong>: 綁定 Apple Pay 方便搭車。<br>
+                                4. <strong>VoiceTra / Google 翻譯</strong>: 語音翻譯溝通。
+                            </div>
+                        </li>
+                        <li class="flex gap-3 items-start">
+                            <span class="font-bold text-lg leading-none">🌤️</span>
+                            <div>
+                                <strong class="block">6月夏季對策</strong>
+                                大阪 6 月均溫 24-28°C，為梅雨季。必備<strong>輕便折傘</strong>、<strong>涼感濕紙巾</strong>、<strong>手持風扇</strong>。室內冷氣強，建議帶薄外套。
+                            </div>
+                        </li>
+                        <li class="flex gap-3 items-start">
+                            <span class="font-bold text-lg leading-none">🛍️</span>
+                            <div>
+                                <strong class="block">退稅規則 (Tax Free)</strong>
+                                單日單店滿 5,500 日圓(含稅)可退稅。消耗品(藥妝/零食)會被放入<strong>密封袋</strong>，在日本境內<strong>不可拆封</strong>。
+                            </div>
+                        </li>
+                    </ul>
+                </section>
+            </div>
+        </div>
+
+        <div id="itinerary-view" class="view-section h-full flex flex-col hidden">
+            
+            <div class="sticky-header px-4 py-3 overflow-x-auto no-scrollbar flex gap-3 shadow-sm shrink-0" id="day-nav">
+                </div>
+
+            <div class="flex-1 overflow-y-auto bg-slate-50 pb-24 relative" id="timeline-scroll-area">
+                
+                <div class="max-w-3xl mx-auto px-4 pt-6 pb-2">
+                    <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex justify-between items-center">
+                        <div>
+                            <h2 id="current-day-title" class="text-xl font-bold text-slate-800">Day 1</h2>
+                            <div class="flex items-center gap-3 text-sm text-slate-500 mt-1">
+                                <span id="weather-display" class="flex items-center gap-1">☁️ 25°C</span>
+                                <span class="h-4 w-px bg-slate-300"></span>
+                                <span class="font-mono text-emerald-600 font-bold" id="daily-cost-display">¥0</span>
+                            </div>
+                        </div>
+                        <div class="text-right max-w-[50%]">
+                             <span class="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded-lg block truncate" id="daily-tip">提示</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="timeline-list" class="p-4 space-y-3 max-w-3xl mx-auto">
+                    </div>
+
+                <button onclick="openEditModal()" class="fab bg-sky-600 hover:bg-sky-700 text-white w-14 h-14 rounded-full flex items-center justify-center text-2xl shadow-lg shadow-sky-200">+</button>
+            </div>
+        </div>
+
+        <div id="spots-view" class="view-section h-full overflow-y-auto hidden bg-white pb-20">
+            <div class="max-w-7xl mx-auto px-4 py-6">
+                <div class="sticky top-0 bg-white/95 backdrop-blur z-10 py-4 border-b mb-6">
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="filterSpots('all')" class="filter-btn active ring-2 ring-slate-800 bg-slate-800 text-white px-4 py-1.5 rounded-full text-sm">全部</button>
+                        <button onclick="filterSpots('Day 1')" class="filter-btn bg-slate-100 text-slate-600 px-4 py-1.5 rounded-full text-sm hover:bg-slate-200">Day 1</button>
+                        <button onclick="filterSpots('Day 2')" class="filter-btn bg-slate-100 text-slate-600 px-4 py-1.5 rounded-full text-sm hover:bg-slate-200">Day 2</button>
+                        <button onclick="filterSpots('Day 3')" class="filter-btn bg-slate-100 text-slate-600 px-4 py-1.5 rounded-full text-sm hover:bg-slate-200">Day 3</button>
+                        <button onclick="filterSpots('Day 4')" class="filter-btn bg-slate-100 text-slate-600 px-4 py-1.5 rounded-full text-sm hover:bg-slate-200">Day 4</button>
+                        <button onclick="filterSpots('Day 5')" class="filter-btn bg-slate-100 text-slate-600 px-4 py-1.5 rounded-full text-sm hover:bg-slate-200">Day 5</button>
+                        <button onclick="filterSpots('Day 6')" class="filter-btn bg-slate-100 text-slate-600 px-4 py-1.5 rounded-full text-sm hover:bg-slate-200">Day 6</button>
+                        <button onclick="filterSpots('Day 7')" class="filter-btn bg-slate-100 text-slate-600 px-4 py-1.5 rounded-full text-sm hover:bg-slate-200">Day 7</button>
+                    </div>
+                    <div class="flex flex-wrap gap-2 mt-3 pt-2 border-t border-slate-100">
+                        <span class="text-xs font-bold text-slate-400 py-1.5">類型：</span>
+                        <button onclick="filterType('food')" class="type-btn bg-orange-50 text-orange-600 px-3 py-1 rounded-md text-xs hover:bg-orange-100">🍽️ 美食</button>
+                        <button onclick="filterType('shopping')" class="type-btn bg-pink-50 text-pink-600 px-3 py-1 rounded-md text-xs hover:bg-pink-100">🛍️ 購物</button>
+                        <button onclick="filterType('attraction')" class="type-btn bg-blue-50 text-blue-600 px-3 py-1 rounded-md text-xs hover:bg-blue-100">⛩️ 景點</button>
+                    </div>
+                </div>
+                
+                <div id="spots-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    </div>
+            </div>
+        </div>
+
+        <div id="info-view" class="view-section h-full overflow-y-auto hidden bg-slate-100 pb-20">
+            <div class="max-w-4xl mx-auto px-4 py-8 space-y-8">
+                
+                <div class="rounded-xl overflow-hidden shadow-xl border border-slate-700 bg-slate-900">
+                    <div class="flight-board p-6">
+                        <div class="flex justify-between items-end mb-6 border-b border-slate-700 pb-2">
+                            <h2 class="text-2xl sm:text-3xl font-bold text-white tracking-widest">FLIGHT SCHEDULE</h2>
+                            <span class="text-sm text-emerald-400 animate-pulse">● ON TIME</span>
+                        </div>
+                        <div class="flight-row py-4 grid grid-cols-12 gap-2 items-center">
+                            <div class="col-span-2 text-xl font-bold text-white">BR148</div>
+                            <div class="col-span-2 text-sky-400 text-xs sm:text-base">EVA AIR</div>
+                            <div class="col-span-3 text-white">
+                                <div class="text-[10px] text-slate-400">DEP</div>
+                                <div class="text-lg sm:text-2xl">KHH 15:25</div>
+                            </div>
+                            <div class="col-span-1 text-center text-slate-500">✈</div>
+                            <div class="col-span-3 text-white">
+                                <div class="text-[10px] text-slate-400">ARR</div>
+                                <div class="text-lg sm:text-2xl">KIX 19:15</div>
+                            </div>
+                            <div class="col-span-1 text-right">
+                                <span class="text-[10px] bg-emerald-900 text-emerald-400 px-1 rounded">06/06</span>
+                            </div>
+                        </div>
+                        <div class="flight-row py-4 grid grid-cols-12 gap-2 items-center">
+                            <div class="col-span-2 text-xl font-bold text-white">BR147</div>
+                            <div class="col-span-2 text-sky-400 text-xs sm:text-base">EVA AIR</div>
+                            <div class="col-span-3 text-white">
+                                <div class="text-[10px] text-slate-400">DEP</div>
+                                <div class="text-lg sm:text-2xl">KIX 20:20</div>
+                            </div>
+                            <div class="col-span-1 text-center text-slate-500">✈</div>
+                            <div class="col-span-3 text-white">
+                                <div class="text-[10px] text-slate-400">ARR</div>
+                                <div class="text-lg sm:text-2xl">KHH 22:15</div>
+                            </div>
+                            <div class="col-span-1 text-right">
+                                <span class="text-[10px] bg-amber-900 text-amber-400 px-1 rounded">06/12</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl shadow-sm p-6 flex flex-col md:flex-row gap-6">
+                    <div class="w-full md:w-1/3 h-48 bg-slate-100 rounded-xl flex items-center justify-center text-6xl">
+                        🏨
+                    </div>
+                    <div class="flex-1">
+                        <h2 class="text-2xl font-bold text-slate-800 mb-2">The Peak Tsutenkaku</h2>
+                        <div class="flex flex-wrap gap-2 mb-4">
+                            <span class="bg-indigo-50 text-indigo-700 px-2 py-1 rounded text-xs font-bold">新世界通天閣旁</span>
+                            <span class="bg-indigo-50 text-indigo-700 px-2 py-1 rounded text-xs font-bold">06/06-06/12</span>
+                        </div>
+                        <p class="text-slate-600 text-sm mb-4">
+                            位於充滿大阪風情的新世界。距離惠美須町站步行僅 5 分鐘，對面就是通天閣與 MEGA 唐吉軻德。
+                        </p>
+                        <div class="p-3 bg-slate-50 rounded-lg text-sm space-y-1 mb-4">
+                            <p><span class="font-bold text-slate-500">地址：</span>大阪市浪速區惠美須東 1-23-11</p>
+                            <p><span class="font-bold text-slate-500">電話：</span>+81 90-4301-7797</p>
+                        </div>
+                        <a href="https://www.google.com/maps/search/?api=1&query=The+Peak+Tsutenkaku" target="_blank" class="inline-flex items-center bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition">
+                            Google Maps 導航
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <div id="edit-modal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-end md:items-center justify-center p-0 md:p-4 backdrop-blur-sm">
+        <div class="bg-white w-full md:w-[500px] rounded-t-2xl md:rounded-2xl p-6 shadow-2xl transform transition-transform duration-300 translate-y-full md:translate-y-0" id="modal-content">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold text-slate-800" id="modal-title">編輯行程</h3>
+                <button onclick="closeEditModal()" class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 flex items-center justify-center">✕</button>
+            </div>
+            <form id="edit-form" class="space-y-4">
+                <input type="hidden" id="edit-id">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-xs font-bold text-slate-400 block mb-1">時間</label>
+                        <input type="time" id="edit-time" class="w-full bg-slate-50 border-slate-200 rounded-lg">
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-slate-400 block mb-1">類型</label>
+                        <select id="edit-type" class="w-full bg-slate-50 border-slate-200 rounded-lg">
+                            <option value="food">🍽️ 美食</option>
+                            <option value="shop">🛍️ 購物</option>
+                            <option value="spot">⛩️ 景點</option>
+                            <option value="transport">🚇 交通</option>
+                            <option value="other">💤 其他</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-400 block mb-1">行程名稱</label>
+                    <input type="text" id="edit-name" class="w-full bg-slate-50 border-slate-200 rounded-lg font-bold">
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-400 block mb-1">費用 (¥)</label>
+                    <input type="number" id="edit-cost" class="w-full bg-slate-50 border-slate-200 rounded-lg">
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-400 block mb-1">筆記</label>
+                    <textarea id="edit-desc" rows="3" class="w-full bg-slate-50 border-slate-200 rounded-lg text-sm"></textarea>
+                </div>
+                <div class="flex gap-3 pt-2">
+                    <button type="button" onclick="deleteItem()" class="flex-1 bg-red-50 text-red-500 py-3 rounded-xl font-bold text-sm hover:bg-red-100">刪除</button>
+                    <button type="button" onclick="saveItem()" class="flex-[2] bg-sky-600 text-white py-3 rounded-xl font-bold text-sm hover:bg-sky-700 shadow-md shadow-sky-200">儲存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // ================= DATA =================
+        const checklistData = [
+            { title: "必備證件", items: ["護照 (效期6個月以上)", "Visit Japan Web 截圖", "機票/住宿憑證(電子版)", "旅遊保險單"] },
+            { title: "金錢與網卡", items: ["日幣現金 (多準備千円鈔)", "零錢包 (5円/100円)", "信用卡 (JCB/Visa)", "Suica/ICOCA (Apple Pay)", "eSIM / 網卡"] },
+            { title: "APP 下載", items: ["Visit Japan Web (捷徑)", "Google Maps", "乘換案內 (交通查詢)", "Google 翻譯 / VoiceTra", "Uber / GO (叫車)"] },
+            { title: "生活用品", items: ["好走的鞋", "折疊傘 (6月梅雨)", "行動電源", "常備藥品(腸胃/感冒)", "涼感濕紙巾/手持扇"] }
+        ];
+
+        // Itinerary Data (Full details based on Google Sheets content)
+        const tripData = {
+            "2026-06-06": { 
+                dateDisplay: "06/06 (六)",
+                items: [
+                    {id:"d1-1", time:"11:00", title:"前往小港機場", type:"transport", cost:0, desc:"捷運紅線R4小港站"},
+                    {id:"d1-2", time:"12:00", title:"機場報到 Check-in", type:"transport", cost:0, desc:"長榮航空 BR148"},
+                    {id:"d1-3", time:"15:25", title:"BR148 起飛", type:"transport", cost:0, desc:"飛往大阪 KIX"},
+                    {id:"d1-4", time:"19:15", title:"抵達關西機場", type:"transport", cost:0, desc:"入境審查 (準備VJW)"},
+                    {id:"d1-5", time:"20:30", title:"南海電鐵往市區", type:"transport", cost:970, desc:"機場急行至新今宮站"},
+                    {id:"d1-6", time:"22:00", title:"民宿 Check-in", type:"other", cost:0, desc:"The Peak Tsutenkaku"},
+                    {id:"d1-7", time:"22:30", title:"晚餐/宵夜：串炸弁慶", type:"food", cost:2500, desc:"新世界通天閣旁，配啤酒"}
+                ], 
+                tip:"入境人潮多，建議快走。準備好VJW QR Code。", weather:"☁️ 25°C"
+            },
+            "2026-06-07": { 
+                dateDisplay: "06/07 (日)",
+                items: [
+                    {id:"d2-1", time:"09:00", title:"前往北濱", type:"transport", cost:240, desc:"地鐵堺筋線"},
+                    {id:"d2-2", time:"09:30", title:"早餐：猿田彥珈琲", type:"food", cost:800, desc:"淀屋橋店，或選 Sandwich Parlour 47"},
+                    {id:"d2-3", time:"10:30", title:"中之島玫瑰園", type:"spot", cost:0, desc:"河岸散步"},
+                    {id:"d2-4", time:"11:00", title:"大阪天滿宮", type:"spot", cost:0, desc:"學問之神"},
+                    {id:"d2-5", time:"11:30", title:"天神橋筋商店街", type:"shop", cost:0, desc:"日本最長商店街"},
+                    {id:"d2-6", time:"12:00", title:"小吃：中村屋可樂餅", type:"food", cost:150, desc:"必吃炸物"},
+                    {id:"d2-7", time:"12:30", title:"小吃：章魚燒道樂", type:"food", cost:600, desc:"Wanaka 天四店"},
+                    {id:"d2-8", time:"13:00", title:"午餐：肉屋金星", type:"food", cost:1500, desc:"CP值高燒肉"},
+                    {id:"d2-9", time:"14:30", title:"甜點：Hara Donuts", type:"food", cost:300, desc:"豆乳甜甜圈"},
+                    {id:"d2-10", time:"15:00", title:"下午茶：西洋茶館", type:"food", cost:1200, desc:"英式布丁"},
+                    {id:"d2-11", time:"18:00", title:"晚餐：Ogimachi Udon", type:"food", cost:1000, desc:"咖哩烏龍麵"}
+                ], 
+                tip:"商店街很長，穿好走的鞋。", weather:"☀️ 27°C"
+            },
+            "2026-06-08": { 
+                dateDisplay: "06/08 (一)",
+                items: [
+                    {id:"d3-1", time:"07:00", title:"早餐：麥當勞", type:"food", cost:500, desc:"通天閣店，鬆餅堡"},
+                    {id:"d3-2", time:"08:00", title:"前往勝尾寺", type:"transport", cost:1040, desc:"御堂筋線至箕面+公車"},
+                    {id:"d3-3", time:"09:30", title:"勝尾寺", type:"spot", cost:500, desc:"祈求勝運，滿山達摩"},
+                    {id:"d3-4", time:"12:30", title:"前往中崎町", type:"transport", cost:0, desc:"返回市區"},
+                    {id:"d3-5", time:"13:30", title:"午餐：Onigiri Gorichan", type:"food", cost:1000, desc:"飯糰茶泡飯"},
+                    {id:"d3-6", time:"14:30", title:"中崎町散策", type:"spot", cost:0, desc:"古著店、TruffleBAKERY"},
+                    {id:"d3-7", time:"16:00", title:"梅田購物", type:"shop", cost:0, desc:"阪急三番街、LUCUA"},
+                    {id:"d3-8", time:"19:00", title:"晚餐：Hanadako", type:"food", cost:800, desc:"新梅田食道街，蔥花章魚燒"}
+                ], 
+                tip:"勝尾寺公車班次少，注意回程時間。", weather:"☁️ 26°C"
+            },
+            "2026-06-09": { 
+                dateDisplay: "06/09 (二)",
+                items: [
+                    {id:"d4-1", time:"08:00", title:"前往宇治", type:"transport", cost:730, desc:"京阪電鐵"},
+                    {id:"d4-2", time:"10:00", title:"宇治抹茶巡禮", type:"food", cost:1500, desc:"伊藤久右衛門/中村藤吉"},
+                    {id:"d4-3", time:"11:30", title:"平等院", type:"spot", cost:700, desc:"鳳凰堂(10元硬幣)"},
+                    {id:"d4-4", time:"15:00", title:"前往奈良", type:"transport", cost:510, desc:"JR 奈良線"},
+                    {id:"d4-5", time:"15:30", title:"奈良公園 & 東大寺", type:"spot", cost:600, desc:"餵鹿、看大佛"},
+                    {id:"d4-6", time:"16:30", title:"小吃：中谷堂", type:"food", cost:200, desc:"高速搗麻糬"},
+                    {id:"d4-7", time:"17:00", title:"甜點：大佛布丁", type:"food", cost:400, desc:"必買伴手禮"},
+                    {id:"d4-8", time:"19:00", title:"晚餐：元喜神拉麵", type:"food", cost:1000, desc:"雞白湯+雜炊"}
+                ], 
+                tip:"奈良鹿可能會搶食，請注意隨身物品。", weather:"☀️ 28°C"
+            },
+            "2026-06-10": { 
+                dateDisplay: "06/10 (三)",
+                items: [
+                    {id:"d5-1", time:"08:00", title:"早餐：TEA ROOM Tamy", type:"food", cost:400, desc:"新世界老派喫茶"},
+                    {id:"d5-2", time:"09:00", title:"前往嵐山", type:"transport", cost:680, desc:"阪急電鐵"},
+                    {id:"d5-3", time:"10:30", title:"竹林小徑 & 渡月橋", type:"spot", cost:0, desc:"經典地標"},
+                    {id:"d5-4", time:"11:30", title:"咖啡：% ARABICA", type:"food", cost:600, desc:"河畔拿鐵"},
+                    {id:"d5-5", time:"12:30", title:"午餐：廣川鰻魚飯", type:"food", cost:4000, desc:"或選 Ozuru 烏龍麵"},
+                    {id:"d5-6", time:"14:00", title:"小吃：中村屋/湯葉起司", type:"food", cost:500, desc:"可樂餅、豆皮串"},
+                    {id:"d5-7", time:"15:00", title:"天龍寺", type:"spot", cost:500, desc:"曹源池庭園"},
+                    {id:"d5-8", time:"19:00", title:"晚餐：串炸弁慶", type:"food", cost:2500, desc:"回新世界用餐"},
+                    {id:"d5-9", time:"20:30", title:"購物：MEGA唐吉軻德", type:"shop", cost:0, desc:"新世界店補貨"}
+                ], 
+                tip:"嵐山遊客眾多，建議早點出發。", weather:"⛅ 25°C"
+            },
+            "2026-06-11": { 
+                dateDisplay: "06/11 (四)",
+                items: [
+                    {id:"d6-1", time:"09:00", title:"早餐：木津市場", type:"food", cost:1500, desc:"海鮮丼/水果/Kaino Coffee"},
+                    {id:"d6-2", time:"10:30", title:"難波八阪神社", type:"spot", cost:0, desc:"巨大獅子殿"},
+                    {id:"d6-3", time:"11:30", title:"午餐：HARBS", type:"food", cost:2000, desc:"Namba Parks 水果千層"},
+                    {id:"d6-4", time:"13:00", title:"難波/心齋橋購物", type:"shop", cost:0, desc:"無印良品, GU, Uniqlo"},
+                    {id:"d6-5", time:"16:00", title:"咖啡：LiLo Coffee", type:"food", cost:600, desc:"特色手沖"},
+                    {id:"d6-6", time:"18:00", title:"晚餐：吉次燒肉", type:"food", cost:3000, desc:"厚切牛舌"},
+                    {id:"d6-7", time:"20:00", title:"甜點：PABLO", type:"food", cost:800, desc:"半熟起司塔"},
+                    {id:"d6-8", time:"21:00", title:"宵夜：一蘭拉麵", type:"food", cost:1000, desc:"道頓堀店"}
+                ], 
+                tip:"木津市場建議中午前去，下午會收攤。", weather:"☀️ 27°C"
+            },
+            "2026-06-12": { 
+                dateDisplay: "06/12 (五)",
+                items: [
+                    {id:"d7-1", time:"11:00", title:"民宿退房", type:"other", cost:0, desc:"前往天下茶屋轉乘"},
+                    {id:"d7-2", time:"13:00", title:"臨空城 Outlet", type:"shop", cost:0, desc:"最後血拼"},
+                    {id:"d7-3", time:"13:30", title:"午餐：Panda Express", type:"food", cost:1200, desc:"美式中餐"},
+                    {id:"d7-4", time:"15:30", title:"機場 Check-in", type:"transport", cost:370, desc:"BR147"},
+                    {id:"d7-5", time:"17:30", title:"晚餐：神座拉麵", type:"food", cost:900, desc:"機場 3F"},
+                    {id:"d7-6", time:"20:20", title:"BR147 起飛", type:"transport", cost:0, desc:"回高雄"}
+                ], 
+                tip:"Outlet 有大型寄物櫃可放行李。", weather:"☀️ 28°C"
+            }
+        };
+
+        // Complete Spots Data
+        const allSpots = [
+            // Day 1
+            { day: "Day 1", type: "food", name: "551蓬萊肉包", tag: "機場/晚餐", desc: "關西機場必吃" },
+            { day: "Day 1", type: "food", name: "神座拉麵", tag: "機場/晚餐", desc: "蔬菜湯底清爽拉麵" },
+            { day: "Day 1", type: "food", name: "串炸弁慶", tag: "新世界/宵夜", desc: "通天閣旁，禁止二次沾醬" },
+            // Day 2
+            { day: "Day 2", type: "food", name: "猿田彥珈琲", tag: "北濱/早餐", desc: "淀屋橋店，有烤箱" },
+            { day: "Day 2", type: "food", name: "Sandwich Parlour 47", tag: "北濱/早餐", desc: "河景三明治" },
+            { day: "Day 2", type: "attraction", name: "大阪天滿宮", tag: "天神橋", desc: "學問之神" },
+            { day: "Day 2", type: "shopping", name: "天神橋筋商店街", tag: "天神橋", desc: "日本最長商店街" },
+            { day: "Day 2", type: "food", name: "Maruyama Crêpe", tag: "天神橋", desc: "料多可麗餅" },
+            { day: "Day 2", type: "food", name: "Ogimachi Udon-ya", tag: "天神橋/午餐", desc: "咖哩烏龍麵" },
+            { day: "Day 2", type: "food", name: "Hara Donuts", tag: "天神橋/甜點", desc: "豆乳甜甜圈" },
+            { day: "Day 2", type: "food", name: "Abeno Dango", tag: "天神橋/甜點", desc: "黃豆粉糰子" },
+            { day: "Day 2", type: "food", name: "西洋茶館", tag: "天神橋/午茶", desc: "手工布丁" },
+            { day: "Day 2", type: "food", name: "章魚燒道樂 Wanaka", tag: "天神橋/小吃", desc: "外脆內軟" },
+            { day: "Day 2", type: "food", name: "肉屋金星", tag: "天神橋/午餐", desc: "高CP值燒肉" },
+            { day: "Day 2", type: "food", name: "Le Croissant", tag: "天神橋/甜點", desc: "迷你可頌" },
+            // Day 3
+            { day: "Day 3", type: "attraction", name: "勝尾寺", tag: "箕面", desc: "祈求勝運達摩" },
+            { day: "Day 3", type: "food", name: "TruffleBAKERY", tag: "中崎町/甜點", desc: "白松露鹽可頌" },
+            { day: "Day 3", type: "food", name: "Onigiri Gorichan", tag: "中崎町/午餐", desc: "飯糰茶泡飯" },
+            { day: "Day 3", type: "food", name: "neel 中崎町", tag: "中崎町/咖啡", desc: "梨子Logo名店" },
+            { day: "Day 3", type: "shopping", name: "Pigsty / Green Pepe", tag: "中崎町", desc: "古著與雜貨" },
+            { day: "Day 3", type: "food", name: "Hanadako", tag: "梅田/晚餐", desc: "新梅田食道街蔥花章魚燒" },
+            { day: "Day 3", type: "food", name: "Grenier", tag: "梅田/甜點", desc: "阪急旁千層酥" },
+            { day: "Day 3", type: "food", name: "Blue Bottle", type: "food", tag: "梅田", desc: "茶屋町店" },
+            { day: "Day 3", type: "shopping", name: "阪急百貨", tag: "梅田", desc: "B1伴手禮天堂" },
+            { day: "Day 3", type: "shopping", name: "LUCUA / 1100", tag: "梅田", desc: "Montbell, 雜貨" },
+            // Day 4
+            { day: "Day 4", type: "food", name: "伊藤久右衛門", tag: "宇治/午餐", desc: "抹茶咖哩、巴菲" },
+            { day: "Day 4", type: "food", name: "中村藤吉 平等院店", tag: "宇治/甜點", desc: "河景抹茶凍" },
+            { day: "Day 4", type: "attraction", name: "平等院", tag: "宇治", desc: "鳳凰堂(10円硬幣)" },
+            { day: "Day 4", type: "food", name: "中谷堂", tag: "奈良/小吃", desc: "高速搗麻糬" },
+            { day: "Day 4", type: "food", name: "大佛布丁", tag: "奈良/甜點", desc: "絲滑口感" },
+            { day: "Day 4", type: "food", name: "志津香釜飯", tag: "奈良/晚餐", desc: "七種食材釜飯" },
+            { day: "Day 4", type: "food", name: "元喜神拉麵", tag: "奈良/晚餐", desc: "雞白湯+雜炊" },
+            { day: "Day 4", type: "attraction", name: "奈良公園 & 東大寺", tag: "奈良", desc: "餵鹿、看大佛" },
+            // Day 5
+            { day: "Day 5", type: "food", name: "TEA ROOM Tamy", tag: "新世界/早餐", desc: "老派喫茶吐司" },
+            { day: "Day 5", type: "attraction", name: "嵐山竹林 & 渡月橋", tag: "嵐山", desc: "經典必去" },
+            { day: "Day 5", type: "food", name: "% ARABICA", tag: "嵐山/咖啡", desc: "渡月橋旁拿鐵" },
+            { day: "Day 5", type: "food", name: "廣川鰻魚飯", tag: "嵐山/午餐", desc: "米其林一星" },
+            { day: "Day 5", type: "food", name: "嵐山烏龍麵 Ozuru", tag: "嵐山/午餐", desc: "鴨肉冷麵" },
+            { day: "Day 5", type: "food", name: "中村屋可樂餅", tag: "嵐山/小吃", desc: "和牛可樂餅" },
+            { day: "Day 5", type: "food", name: "古都芋本舖", tag: "嵐山/甜點", desc: "大支烤糰子" },
+            { day: "Day 5", type: "attraction", name: "天龍寺", tag: "嵐山", desc: "曹源池庭園" },
+            { day: "Day 5", type: "shopping", name: "MEGA唐吉軻德", tag: "新世界/購物", desc: "24H藥妝雜貨" },
+            // Day 6
+            { day: "Day 6", type: "food", name: "木津市場", tag: "難波/早餐", desc: "海鮮丼、水果" },
+            { day: "Day 6", type: "attraction", name: "難波八阪神社", tag: "難波", desc: "巨大獅子殿" },
+            { day: "Day 6", type: "food", name: "HARBS", tag: "難波/午餐", desc: "Namba Parks 水果千層" },
+            { day: "Day 6", type: "food", name: "P.G.donut", tag: "難波/甜點", desc: "生甜甜圈" },
+            { day: "Day 6", type: "shopping", name: "Namba Parks", tag: "難波", desc: "戶外用品、建築美" },
+            { day: "Day 6", type: "shopping", name: "大國藥妝", tag: "難波/心齋橋", desc: "價格實惠" },
+            { day: "Day 6", type: "food", name: "一蘭拉麵", tag: "道頓堀/晚餐", desc: "經典豚骨" },
+            { day: "Day 6", type: "food", name: "吉次燒肉", tag: "心齋橋/晚餐", desc: "厚切牛舌" },
+            { day: "Day 6", type: "food", name: "PABLO", tag: "心齋橋/甜點", desc: "半熟起司塔" },
+            { day: "Day 6", type: "shopping", name: "大丸百貨", tag: "心齋橋", desc: "寶可夢中心, Jump Shop" },
+            // Day 7
+            { day: "Day 7", type: "shopping", name: "Rinku Premium Outlets", tag: "臨空城", desc: "最後血拼" },
+            { day: "Day 7", type: "food", name: "Panda Express", tag: "臨空城/午餐", desc: "美式中餐" }
+        ];
+
+        // ================= LOGIC =================
+        let currentDay = "2026-06-06";
+        let currentItems = [];
+        let activeSortable = null;
+        let currentSpotFilter = { day: 'all', type: 'all' };
+
+        // Initialization
+        document.addEventListener('DOMContentLoaded', () => {
+            renderChecklist();
+            renderDayNav();
+            renderTimeline(currentDay);
+            renderSpots();
+        });
+
+        // 1. Overview Logic
+        function renderChecklist() {
+            const container = document.getElementById('checklist-container');
+            container.innerHTML = checklistData.map((cat, i) => `
+                <div class="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                    <h3 class="font-bold text-sky-600 mb-3 border-b border-slate-200 pb-2">${cat.title}</h3>
+                    <div class="space-y-2">
+                        ${cat.items.map(item => `
+                            <label class="checkbox-wrapper flex items-start cursor-pointer group">
+                                <input type="checkbox" class="peer sr-only">
+                                <div class="w-5 h-5 border-2 border-slate-300 rounded mr-3 mt-0.5 flex items-center justify-center bg-white transition-colors shrink-0">
+                                    <svg class="w-3 h-3 text-white hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                                </div>
+                                <span class="text-sm text-slate-600 group-hover:text-slate-800 transition">${item}</span>
+                            </label>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 2. Itinerary Logic
+        function renderDayNav() {
+            const nav = document.getElementById('day-nav');
+            nav.innerHTML = Object.keys(tripData).map((date, i) => {
+                const active = date === currentDay;
+                const dayNum = i + 1;
+                const dateText = tripData[date].dateDisplay;
+                return `
+                <button onclick="selectDay('${date}')" class="day-btn shrink-0 px-4 py-2 rounded-full border transition-all ${active ? 'active bg-sky-600 text-white border-sky-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}">
+                    <div class="text-xs font-bold opacity-70 sub-text">Day ${dayNum}</div>
+                    <div class="text-sm font-bold whitespace-nowrap">${dateText}</div>
+                </button>`;
+            }).join('');
+        }
+
+        function selectDay(date) {
+            currentDay = date;
+            renderDayNav();
+            renderTimeline(date);
+        }
+
+        function renderTimeline(date) {
+            const data = tripData[date];
+            currentItems = data.items;
+            document.getElementById('current-day-title').innerText = `Day ${Object.keys(tripData).indexOf(date)+1} - ${data.dateDisplay}`;
+            document.getElementById('daily-tip').innerText = data.tip;
+            document.getElementById('weather-display').innerText = data.weather;
+            
+            const total = currentItems.reduce((sum, item) => sum + (parseInt(item.cost)||0), 0);
+            document.getElementById('daily-cost-display').innerText = `¥${total.toLocaleString()}`;
+
+            const list = document.getElementById('timeline-list');
+            list.innerHTML = '';
+            
+            currentItems.forEach(item => {
+                const el = document.createElement('div');
+                el.className = 'bg-white rounded-xl p-4 shadow-sm border border-slate-200 relative hover-card cursor-pointer active:scale-[0.99]';
+                el.onclick = (e) => { if(!el.classList.contains('sortable-drag')) openEditModal(item.id); };
+                
+                let typeIcon = {'food':'🍽️','shop':'🛍️','spot':'⛩️','transport':'🚇'}[item.type] || '💤';
+                let typeColor = {'food':'text-orange-600 bg-orange-50','shop':'text-pink-600 bg-pink-50','spot':'text-blue-600 bg-blue-50','transport':'text-slate-600 bg-slate-100'}[item.type] || 'text-gray-600 bg-gray-100';
+
+                el.innerHTML = `
+                    <div class="flex justify-between items-start mb-2">
+                        <div class="flex items-center gap-2">
+                            <span class="font-mono font-bold text-lg text-slate-700">${item.time}</span>
+                            <span class="text-xs font-bold px-2 py-1 rounded-full ${typeColor}">${typeIcon}</span>
+                        </div>
+                        ${item.cost > 0 ? `<span class="text-sm font-mono font-medium text-emerald-600">¥${item.cost}</span>` : ''}
+                    </div>
+                    <h3 class="font-bold text-lg text-slate-800">${item.title}</h3>
+                    <p class="text-sm text-slate-500 truncate">${item.desc}</p>
+                `;
+                list.appendChild(el);
+            });
+
+            if (activeSortable) activeSortable.destroy();
+            activeSortable = new Sortable(list, {
+                animation: 150, delay: 200, delayOnTouchOnly: true, ghostClass: 'sortable-ghost', dragClass: 'sortable-drag',
+                onEnd: (evt) => {
+                    const moved = currentItems.splice(evt.oldIndex, 1)[0];
+                    currentItems.splice(evt.newIndex, 0, moved);
+                }
+            });
+        }
+
+        // 3. Spots Logic
+        function renderSpots() {
+            const container = document.getElementById('spots-container');
+            container.innerHTML = '';
+            
+            const filtered = allSpots.filter(s => {
+                const dayMatch = currentSpotFilter.day === 'all' || s.day === currentSpotFilter.day;
+                const typeMatch = currentSpotFilter.type === 'all' || 
+                                 (currentSpotFilter.type === 'food' && s.type === 'food') ||
+                                 (currentSpotFilter.type === 'shopping' && s.type === 'shopping') ||
+                                 (currentSpotFilter.type === 'attraction' && s.type === 'attraction');
+                return dayMatch && typeMatch;
+            });
+
+            filtered.forEach(spot => {
+                const el = document.createElement('div');
+                el.className = 'bg-white border border-slate-100 rounded-xl p-4 shadow-sm hover-card flex flex-col h-full';
+                
+                let badge = {'food':'bg-orange-100 text-orange-700','shopping':'bg-pink-100 text-pink-700','attraction':'bg-blue-100 text-blue-700'}[spot.type];
+                let icon = {'food':'🍽️','shopping':'🛍️','attraction':'⛩️'}[spot.type];
+
+                el.innerHTML = `
+                    <div class="flex justify-between items-start mb-2">
+                        <span class="text-[10px] font-bold px-2 py-1 rounded-full ${badge}">${icon} ${spot.day}</span>
+                        <span class="text-[10px] text-slate-400 font-mono border border-slate-100 px-1.5 py-0.5 rounded bg-slate-50 truncate max-w-[100px]">${spot.tag}</span>
+                    </div>
+                    <h4 class="font-bold text-slate-800 text-lg mb-1 leading-tight">${spot.name}</h4>
+                    <p class="text-sm text-slate-500 mb-3 flex-1">${spot.desc}</p>
+                    <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(spot.name + ' ' + spot.tag)}" target="_blank" class="text-sky-600 text-sm font-bold hover:underline flex items-center gap-1 mt-auto">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg> Map
+                    </a>
+                `;
+                container.appendChild(el);
+            });
+
+            // Update Button Styles
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                const isActive = btn.textContent.includes(currentSpotFilter.day === 'all' ? '全部' : currentSpotFilter.day);
+                btn.className = `filter-btn px-4 py-1.5 rounded-full text-sm transition ${isActive ? 'active ring-2 ring-slate-800 bg-slate-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`;
+            });
+        }
+
+        function filterSpots(day) { currentSpotFilter.day = day; renderSpots(); }
+        function filterType(type) { currentSpotFilter.type = type; renderSpots(); }
+
+        // 4. General Logic
+        function switchTab(tab) {
+            document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`${tab}-view`).classList.remove('hidden');
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('bg-sky-600', 'text-white', 'active');
+                btn.classList.add('text-slate-500', 'hover:bg-slate-100');
+            });
+            document.getElementById(`btn-${tab}`).classList.add('bg-sky-600', 'text-white', 'active');
+            document.getElementById(`btn-${tab}`).classList.remove('text-slate-500', 'hover:bg-slate-100');
+            window.scrollTo(0,0);
+        }
+
+        // Modal Logic
+        const modal = document.getElementById('edit-modal');
+        const modalContent = document.getElementById('modal-content');
+        let editingId = null;
+
+        function openEditModal(id = null) {
+            editingId = id;
+            document.getElementById('edit-form').reset();
+            document.getElementById('modal-title').innerText = id ? '編輯行程' : '新增行程';
+            
+            if(id) {
+                const item = currentItems.find(i => i.id === id);
+                document.getElementById('edit-time').value = item.time;
+                document.getElementById('edit-type').value = item.type;
+                document.getElementById('edit-name').value = item.title;
+                document.getElementById('edit-cost').value = item.cost;
+                document.getElementById('edit-desc').value = item.desc;
+            }
+            
+            modal.classList.remove('hidden');
+            setTimeout(() => modalContent.classList.remove('translate-y-full'), 10);
+        }
+
+        function closeEditModal() {
+            modalContent.classList.add('translate-y-full');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+        }
+
+        function saveItem() {
+            const newItem = {
+                id: editingId || Date.now().toString(),
+                time: document.getElementById('edit-time').value || "00:00",
+                type: document.getElementById('edit-type').value,
+                title: document.getElementById('edit-name').value,
+                cost: parseInt(document.getElementById('edit-cost').value) || 0,
+                desc: document.getElementById('edit-desc').value
+            };
+
+            if(editingId) {
+                const idx = currentItems.findIndex(i => i.id === editingId);
+                currentItems[idx] = newItem;
+            } else {
+                currentItems.push(newItem);
+                currentItems.sort((a, b) => a.time.localeCompare(b.time));
+            }
+            renderTimeline(currentDay);
+            closeEditModal();
+        }
+
+        function deleteItem() {
+            if(editingId && confirm('確定刪除?')) {
+                currentItems = currentItems.filter(i => i.id !== editingId);
+                tripData[currentDay].items = currentItems;
+                renderTimeline(currentDay);
+                closeEditModal();
+            }
+        }
+    </script>
+</body>
+</html>
